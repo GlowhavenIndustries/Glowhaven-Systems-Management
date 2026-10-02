@@ -1,5 +1,5 @@
 services:
-  meridian:
+  atlas:
     build: .
     ports:
       - "8800:8800"
