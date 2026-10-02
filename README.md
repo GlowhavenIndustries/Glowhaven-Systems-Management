@@ -1,18 +1,18 @@
-# Glowhaven Meridian
+# Glowhaven Atlas
 
 > **The server lifecycle platform for infrastructure teams that need one operational control plane.**
 
-Meridian is an open-source, self-hosted platform for managing Linux and Windows server fleets across discovery, telemetry, maintenance, controlled operations, change approval, and auditability.
+Atlas is an open-source, self-hosted platform for managing Linux and Windows server fleets across discovery, telemetry, maintenance, controlled operations, change approval, and auditability.
 
 It is designed to occupy the space between a per-server administration console and a large lifecycle-management suite: one system for the operational layer that follows a server from enrollment through ongoing maintenance.
 
-## Why Meridian exists
+## Why Atlas exists
 
 Server management is fragmented by design. Windows Admin Center provides deep browser-based administration for Windows Server and clusters, while Red Hat Satellite and SUSE Manager emphasize fleet lifecycle, patching, configuration, compliance, and large-scale Linux management. Canonical MAAS is strong at physical-server provisioning and lifecycle control.
 
-Meridian takes a different approach: **bring the recurring Day 1 and Day 2 server lifecycle into one cross-platform control plane without requiring unrestricted remote shell access as the foundation.**
+Atlas takes a different approach: **bring the recurring Day 1 and Day 2 server lifecycle into one cross-platform control plane without requiring unrestricted remote shell access as the foundation.**
 
-## What Meridian manages
+## What Atlas manages
 
 | Area | Current direction |
 | --- | --- |
@@ -35,7 +35,7 @@ Meridian takes a different approach: **bring the recurring Day 1 and Day 2 serve
                                   |
                                   v
                         +----------------------+
-                        |  MERIDIAN CONTROL    |
+                        |  ATLAS CONTROL    |
                         |----------------------|
                         | Identity             |
                         | Authorization        |
@@ -51,7 +51,7 @@ Meridian takes a different approach: **bring the recurring Day 1 and Day 2 serve
                     |              |              |
                     v              v              v
                Server A       Server B       Server C
-               Meridian       Meridian       Meridian
+               Atlas       Atlas       Atlas
                Agent          Agent          Agent
 ```
 
@@ -71,7 +71,7 @@ The current release uses SQLite for an approachable single-node deployment. The 
 
 ## Security
 
-Meridian includes real controls including:
+Atlas includes real controls including:
 
 - scrypt password hashing
 - HttpOnly and SameSite session cookies
@@ -101,19 +101,19 @@ python -m venv .venv
 
 # Windows PowerShell
 .venv\\Scripts\\Activate.ps1
-$env:MERIDIAN_BOOTSTRAP_PASSWORD = "replace-with-a-long-random-password"
+$env:ATLAS_BOOTSTRAP_PASSWORD = "replace-with-a-long-random-password"
 
 # Linux / macOS
 source .venv/bin/activate
-export MERIDIAN_BOOTSTRAP_PASSWORD="replace-with-a-long-random-password"
+export ATLAS_BOOTSTRAP_PASSWORD="replace-with-a-long-random-password"
 
 pip install -r requirements-dev.txt
-uvicorn meridian.main:app --host 127.0.0.1 --port 8800
+uvicorn atlas.main:app --host 127.0.0.1 --port 8800
 ```
 
 Open `http://127.0.0.1:8800`.
 
-The default bootstrap username is `admin` unless `MERIDIAN_BOOTSTRAP_ADMIN` is changed.
+The default bootstrap username is `admin` unless `ATLAS_BOOTSTRAP_ADMIN` is changed.
 
 ## Docker
 
@@ -122,7 +122,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-For production deployment, terminate TLS in front of Meridian, enable secure cookies, persist the database on protected storage, and restrict network access to the management plane.
+For production deployment, terminate TLS in front of Atlas, enable secure cookies, persist the database on protected storage, and restrict network access to the management plane.
 
 ## Enroll a server
 
@@ -130,10 +130,10 @@ For production deployment, terminate TLS in front of Meridian, enable secure coo
 2. Select **Add server**.
 3. Generate a single-use enrollment token.
 4. Install the agent on the target server.
-5. Run the agent against the Meridian controller.
+5. Run the agent against the Atlas controller.
 
 ```bash
-python -m agent --controller https://meridian.example.internal --enrollment-token <TOKEN> --name prod-web-01
+python -m agent --controller https://atlas.example.internal --enrollment-token <TOKEN> --name prod-web-01
 ```
 
 The agent sends telemetry, reports security posture, performs patch assessment, and polls for approved operations.
@@ -142,7 +142,7 @@ The agent sends telemetry, reports security posture, performs patch assessment, 
 
 Patch assessment is adapter-based.
 
-On Linux, Meridian can use available package-manager adapters for:
+On Linux, Atlas can use available package-manager adapters for:
 
 - `apt-get`
 - `dnf`
@@ -154,7 +154,7 @@ High-impact patch operations are approval-gated and must be executed by the auth
 
 ## Current limitations
 
-Meridian is an evolving open-source platform. The present release is a real working foundation, not a claim to full feature parity with every established management suite.
+Atlas is an evolving open-source platform. The present release is a real working foundation, not a claim to full feature parity with every established management suite.
 
 It does not yet provide the full breadth of:
 
@@ -217,9 +217,9 @@ Those areas belong in the product roadmap and should be implemented as real capa
 - Compliance reporting
 - Signed agent releases and secure update channels
 
-## What Meridian is not
+## What Atlas is not
 
-Meridian is not a hypervisor, SIEM, CMDB, Kubernetes control plane, or arbitrary remote-shell gateway.
+Atlas is not a hypervisor, SIEM, CMDB, Kubernetes control plane, or arbitrary remote-shell gateway.
 
 It is the **server lifecycle control layer** that can integrate with those systems rather than pretending to replace all of them.
 
@@ -229,7 +229,7 @@ The codebase intentionally uses a small number of understandable components:
 
 ```text
 Glowhaven-Systems-Management/
-├── meridian/
+├── atlas/
 │   ├── main.py
 │   ├── config.py
 │   ├── db.py
@@ -255,14 +255,14 @@ pytest -q
 Run syntax validation with:
 
 ```bash
-python -m py_compile meridian/*.py agent/*.py
+python -m py_compile atlas/*.py agent/*.py
 ```
 
 CI runs tests, Python compilation validation, and dependency auditing.
 
 ## Enterprise evaluation
 
-For organizations evaluating Meridian, the important architectural questions are explicit:
+For organizations evaluating Atlas, the important architectural questions are explicit:
 
 **Where does state live?** The controller persists fleet and operational state.
 
@@ -278,7 +278,7 @@ For organizations evaluating Meridian, the important architectural questions are
 
 ## Open source
 
-Meridian is designed to be readable, forkable, and extensible. Infrastructure teams should be able to inspect the controller, understand the agent, add an integration, and adapt the deployment model without depending on a closed management appliance.
+Atlas is designed to be readable, forkable, and extensible. Infrastructure teams should be able to inspect the controller, understand the agent, add an integration, and adapt the deployment model without depending on a closed management appliance.
 
 Contributions are welcome. Use issues for bugs, compatibility reports, feature requests, and architecture discussions. Use the private security reporting workflow for vulnerabilities.
 
