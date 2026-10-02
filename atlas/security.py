@@ -20,7 +20,7 @@ def utcnow() -> datetime:
 def hash_secret(secret: str) -> str:
     salt = os.urandom(SALT_BYTES)
     digest = hashlib.scrypt(secret.encode(), salt=salt, n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P, dklen=KEY_BYTES)
-    return f"scrypt\${SCRYPT_N}\${SCRYPT_R}\${SCRYPT_P}\${salt.hex()}\${digest.hex()}"
+    return f"scrypt${SCRYPT_N}${SCRYPT_R}${SCRYPT_P}${salt.hex()}${digest.hex()}"
 
 
 def verify_secret(secret: str, encoded: str) -> bool:
