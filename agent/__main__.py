@@ -14,13 +14,13 @@ from pathlib import Path
 
 import psutil
 
-STATE = Path(os.getenv("MERIDIAN_AGENT_STATE", "agent.json"))
+STATE = Path(os.getenv("ATLAS_AGENT_STATE", "agent.json"))
 
 
 def request(controller: str, path: str, payload: dict, method: str = "POST", key: str | None = None) -> dict:
     body=json.dumps(payload).encode()
     req=urllib.request.Request(controller.rstrip("/")+path,data=body,method=method,headers={"Content-Type":"application/json"})
-    if key: req.add_header("X-Meridian-Agent-Key",key)
+    if key: req.add_header("X-Atlas-Agent-Key",key)
     with urllib.request.urlopen(req,timeout=20) as res: return json.loads(res.read())
 
 
@@ -116,12 +116,12 @@ def run(controller: str, state: dict) -> None:
                 except Exception as exc: st,res="failed",{"error":str(exc)}
                 request(controller,f"/api/agent/jobs/{job['id']}/report",{"status":st,"result":res},key=key)
         except (urllib.error.URLError,TimeoutError,OSError) as exc:
-            print(f"Meridian communication error: {exc}")
+            print(f"Atlas communication error: {exc}")
         time.sleep(interval)
 
 
 def main() -> None:
-    p=argparse.ArgumentParser(description="Glowhaven Meridian server agent"); p.add_argument("--controller",required=True); p.add_argument("--enrollment-token"); p.add_argument("--name",default=socket.gethostname()); a=p.parse_args()
+    p=argparse.ArgumentParser(description="Glowhaven Atlas server agent"); p.add_argument("--controller",required=True); p.add_argument("--enrollment-token"); p.add_argument("--name",default=socket.gethostname()); a=p.parse_args()
     state=register(a.controller,a.enrollment_token,a.name) if a.enrollment_token else (json.loads(STATE.read_text()) if STATE.exists() else None)
     if not state: raise SystemExit("Provide --enrollment-token for first registration.")
     run(a.controller,state)
