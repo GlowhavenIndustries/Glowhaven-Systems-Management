@@ -1,10 +1,184 @@
-const S={view:'overview',me:null,servers:[],jobs:[]};const $=id=>document.getElementById(id);const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));const pct=v=>`${Math.round(Number(v||0))}%`;const time=v=>v?new Date(v).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'Never';
-async function api(path,opt={}){const o={...opt,headers:{...(opt.headers||{})}};if(o.body&&typeof o.body!=='string'){o.headers['Content-Type']='application/json';o.body=JSON.stringify(o.body)}if(['POST','PUT','PATCH','DELETE'].includes((o.method||'GET').toUpperCase())){const c=document.cookie.split('; ').find(x=>x.startsWith('atlas_csrf='));if(c)o.headers['X-CSRF-Token']=decodeURIComponent(c.split('=')[1])}const r=await fetch(path,o);const p=await r.json().catch(()=>({}));if(!r.ok)throw Error(p.detail||`Request failed (${r.status})`);return p}
-async function boot(){try{S.me=await api('/api/me');$('login').classList.add('hidden');$('app').classList.remove('hidden');$('identity').textContent=`${S.me.username} · ${S.me.role}`;document.querySelectorAll('.admin').forEach(x=>x.classList.toggle('hidden',S.me.role!=='admin'));await loadOverview()}catch{$('login').classList.remove('hidden');$('app').classList.add('hidden')}}
-$('login-form').addEventListener('submit',async e=>{e.preventDefault();$('login-error').textContent='';try{await api('/api/auth/login',{method:'POST',body:{username:$('username').value,password:$('password').value}});boot()}catch(err){$('login-error').textContent=err.message}});$('logout').addEventListener('click',async()=>{try{await api('/api/auth/logout',{method:'POST'})}finally{location.reload()}});
-document.querySelectorAll('.nav').forEach(b=>b.addEventListener('click',()=>switchView(b.dataset.view)));function switchView(v){S.view=v;document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));$(v).classList.remove('hidden');document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x.dataset.view===v));const t={overview:['CONTROL PLANE','Fleet overview'],fleet:['SERVER INVENTORY','Managed servers'],operations:['OPERATIONS','Lifecycle work'],approvals:['CHANGE CONTROL','Pending approvals'],audit:['ACCOUNTABILITY','Audit trail']}[v];$('kicker').textContent=t[0];$('title').textContent=t[1];({overview:loadOverview,fleet:loadFleet,operations:loadJobs,approvals:loadApprovals,audit:loadAudit}[v])()}
-async function loadOverview(){const [sum,servers]=await Promise.all([api('/api/summary'),api('/api/servers')]);S.servers=servers;$('servers').textContent=sum.servers;$('online').textContent=sum.online;$('warning').textContent=sum.warning;$('pending').textContent=sum.pending_approvals;$('window').textContent=sum.maintenance_window?'Maintenance window active':'No active maintenance window';$('fleet-table').innerHTML=servers.map(row).join('')||`<tr><td colspan="7" class="sub">No servers registered yet.</td></tr>`}function row(s){return`<tr><td><div class="name">${esc(s.name)}</div><div class="sub">${esc(s.hostname)}</div></td><td>${esc(s.platform)} · ${esc(s.arch)}</td><td><span class="state"><i class="dot ${s.status}"></i>${esc(s.status)}</span></td><td>${pct(s.cpu)}</td><td>${pct(s.memory)}</td><td>${pct(s.disk)}</td><td>${time(s.last_seen)}</td></tr>`}
-async function loadFleet(){S.servers=await api('/api/servers');renderFleet()}function renderFleet(){const q=($('search').value||'').toLowerCase();const list=S.servers.filter(s=>`${s.name} ${s.hostname} ${s.platform}`.toLowerCase().includes(q));$('cards').innerHTML=list.map(card).join('')||`<div class="sub">No matching servers.</div>`}function card(s){return`<article class="card"><div class="card-head"><div><div class="name">${esc(s.name)}</div><div class="sub">${esc(s.hostname)} · ${esc(s.platform)} ${esc(s.arch)}</div></div><span class="state"><i class="dot ${s.status}"></i>${esc(s.status)}</span></div><div class="util"><div><span>CPU</span><b>${pct(s.cpu)}</b></div><div><span>Memory</span><b>${pct(s.memory)}</b></div><div><span>Disk</span><b>${pct(s.disk)}</b></div></div><div class="sub">Last seen ${time(s.last_seen)}</div><div class="actions"><button class="ghost" onclick="queue('${s.id}','assess_patches')">Patch check</button><button class="ghost" onclick="queue('${s.id}','collect_diagnostics')">Diagnostics</button><button class="ghost" onclick="queue('${s.id}','service_restart')">Service restart</button><button class="ghost" onclick="queue('${s.id}','reboot')">Reboot</button></div></article>`}
-async function loadJobs(){S.jobs=await api('/api/jobs');$('jobs').innerHTML=S.jobs.map(j=>`<tr><td>${esc(j.action)}</td><td>${esc((S.servers.find(s=>s.id===j.server_id)||{}).name||j.server_id)}</td><td>${esc(j.status)}</td><td>${j.requires_approval?'Required':'Not required'}</td><td>${time(j.created_at)}</td><td>${esc(JSON.stringify(j.result||{}))}</td></tr>`).join('')||`<tr><td colspan="6" class="sub">No operations yet.</td></tr>`}async function loadApprovals(){const r=await api('/api/approvals');$('approval-list').innerHTML=r.map(a=>`<div class="approval"><div><h4>${esc(a.action)} · ${esc((S.servers.find(s=>s.id===a.server_id)||{}).name||a.server_id)}</h4><div class="meta">Requested ${time(a.created_at)} · job ${esc(a.job_id)}</div></div><button class="primary" onclick="approve(${a.id})">Approve</button></div>`).join('')||`<div class="sub">No pending approvals.</div>`}async function loadAudit(){const r=await api('/api/audit');$('audit-table').innerHTML=r.map(a=>`<tr><td>${time(a.created_at)}</td><td>${esc(a.actor)}</td><td>${esc(a.action)}</td><td>${esc(a.target)}</td><td>${esc(a.result)}</td></tr>`).join('')||`<tr><td colspan="5" class="sub">No audit events.</td></tr>`}
-window.queue=(id,action)=>{S.pending={id,action};$('action-title').textContent=action.replaceAll('_',' ');$('action-copy').textContent='Review this operation before it is sent to the control plane.';$('service-label').classList.toggle('hidden',!action.startsWith('service_'));$('service').value='';$('action').classList.remove('hidden')};window.submitAction=async()=>{const p=S.pending;if(!p)return;const params=p.action.startsWith('service_')?{service:$('service').value.trim()}:{};try{await api(`/api/servers/${p.id}/jobs`,{method:'POST',body:{action:p.action,params}});$('action').classList.add('hidden');S.pending=null;await loadOverview();if(S.view==='operations')await loadJobs()}catch(e){alert(e.message)}};window.approve=async id=>{try{await api(`/api/approvals/${id}/approve`,{method:'POST'});await loadApprovals();await loadOverview()}catch(e){alert(e.message)}};
-$('search').addEventListener('input',renderFleet);$('confirm-action').addEventListener('click',submitAction);document.querySelectorAll('[data-close="action"]').forEach(x=>x.addEventListener('click',()=>$('action').classList.add('hidden')));$('refresh').addEventListener('click',loadOverview);$('refresh-jobs').addEventListener('click',loadJobs);$('refresh-approvals').addEventListener('click',loadApprovals);$('refresh-audit').addEventListener('click',loadAudit);$('add').addEventListener('click',()=>{$('enroll').classList.remove('hidden');$('token-box').classList.add('hidden')});document.querySelectorAll('[data-close="enroll"]').forEach(x=>x.addEventListener('click',()=>$('enroll').classList.add('hidden')));$('generate').addEventListener('click',async()=>{try{const r=await api('/api/enrollment-tokens',{method:'POST'});$('token').textContent=r.token;$('expiry').textContent=`Expires ${time(r.expires_at)}`;$('token-box').classList.remove('hidden')}catch(e){alert(e.message)}});boot();
+const S = { view: 'overview', me: null, servers: [], jobs: [] };
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+const pct = v => `${Math.round(Number(v || 0))}%`;
+const time = v => v ? new Date(v).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never';
+
+async function api(path, opt = {}) {
+    const o = { ...opt, headers: { ...(opt.headers || {}) } };
+    if (o.body && typeof o.body !== 'string') {
+        o.headers['Content-Type'] = 'application/json';
+        o.body = JSON.stringify(o.body);
+    }
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes((o.method || 'GET').toUpperCase())) {
+        const c = document.cookie.split('; ').find(x => x.startsWith('atlas_csrf='));
+        if (c) o.headers['X-CSRF-Token'] = decodeURIComponent(c.split('=')[1]);
+    }
+    const r = await fetch(path, o);
+    const p = await r.json().catch(() => ({}));
+    if (!r.ok) throw Error(p.detail || `Request failed (${r.status})`);
+    return p;
+}
+
+async function boot() {
+    try {
+        S.me = await api('/api/me');
+        $('login').classList.add('hidden');
+        $('app').classList.remove('hidden');
+        $('identity').textContent = `${S.me.username} · ${S.me.role}`;
+        document.querySelectorAll('.admin').forEach(x => x.classList.toggle('hidden', S.me.role !== 'admin'));
+        await loadOverview();
+    } catch {
+        $('login').classList.remove('hidden');
+        $('app').classList.add('hidden');
+    }
+}
+
+$('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    $('login-error').textContent = '';
+    try {
+        await api('/api/auth/login', { method: 'POST', body: { username: $('username').value, password: $('password').value } });
+        boot();
+    } catch (err) {
+        $('login-error').textContent = err.message;
+    }
+});
+
+$('logout').addEventListener('click', async () => {
+    try {
+        await api('/api/auth/logout', { method: 'POST' });
+    } finally {
+        location.reload();
+    }
+});
+
+document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+
+function switchView(v) {
+    S.view = v;
+    document.querySelectorAll('.view').forEach(x => x.classList.add('hidden'));
+    $(v).classList.remove('hidden');
+    document.querySelectorAll('.nav').forEach(x => x.classList.toggle('active', x.dataset.view === v));
+    const t = {
+        overview: ['CONTROL PLANE', 'Fleet overview'],
+        fleet: ['SERVER INVENTORY', 'Managed servers'],
+        operations: ['OPERATIONS', 'Lifecycle work'],
+        approvals: ['CHANGE CONTROL', 'Pending approvals'],
+        audit: ['ACCOUNTABILITY', 'Audit trail']
+    }[v];
+    $('kicker').textContent = t[0];
+    $('title').textContent = t[1];
+    ({ overview: loadOverview, fleet: loadFleet, operations: loadJobs, approvals: loadApprovals, audit: loadAudit }[v])();
+}
+
+async function loadOverview() {
+    const [sum, servers] = await Promise.all([api('/api/summary'), api('/api/servers')]);
+    S.servers = servers;
+    $('servers').textContent = sum.servers;
+    $('online').textContent = sum.online;
+    $('warning').textContent = sum.warning;
+    $('pending').textContent = sum.pending_approvals;
+    $('window').textContent = sum.maintenance_window ? 'Maintenance window active' : 'No active maintenance window';
+    $('fleet-table').innerHTML = servers.map(row).join('') || `<tr><td colspan="7" class="sub">No servers registered yet.</td></tr>`;
+}
+
+function row(s) {
+    return `<tr><td><div class="name">${esc(s.name)}</div><div class="sub">${esc(s.hostname)}</div></td><td>${esc(s.platform)} · ${esc(s.arch)}</td><td><span class="state"><i class="dot ${s.status}"></i>${esc(s.status)}</span></td><td>${pct(s.cpu)}</td><td>${pct(s.memory)}</td><td>${pct(s.disk)}</td><td>${time(s.last_seen)}</td></tr>`;
+}
+
+async function loadFleet() {
+    S.servers = await api('/api/servers');
+    renderFleet();
+}
+
+function renderFleet() {
+    const q = ($('search').value || '').toLowerCase();
+    const list = S.servers.filter(s => `${s.name} ${s.hostname} ${s.platform}`.toLowerCase().includes(q));
+    $('cards').innerHTML = list.map(card).join('') || `<div class="sub">No matching servers.</div>`;
+}
+
+function card(s) {
+    return `<article class="card"><div class="card-head"><div><div class="name">${esc(s.name)}</div><div class="sub">${esc(s.hostname)} · ${esc(s.platform)} ${esc(s.arch)}</div></div><span class="state"><i class="dot ${s.status}"></i>${esc(s.status)}</span></div><div class="util"><div><span>CPU</span><b>${pct(s.cpu)}</b></div><div><span>Memory</span><b>${pct(s.memory)}</b></div><div><span>Disk</span><b>${pct(s.disk)}</b></div></div><div class="sub">Last seen ${time(s.last_seen)}</div><div class="actions"><button class="ghost" onclick="queue('${s.id}','assess_patches')">Patch check</button><button class="ghost" onclick="queue('${s.id}','collect_diagnostics')">Diagnostics</button><button class="ghost" onclick="queue('${s.id}','service_restart')">Service restart</button><button class="ghost" onclick="queue('${s.id}','reboot')">Reboot</button></div></article>`;
+}
+
+async function loadJobs() {
+    S.jobs = await api('/api/jobs');
+    $('jobs').innerHTML = S.jobs.map(j => `<tr><td>${esc(j.action)}</td><td>${esc((S.servers.find(s => s.id === j.server_id) || {}).name || j.server_id)}</td><td>${esc(j.status)}</td><td>${j.requires_approval ? 'Required' : 'Not required'}</td><td>${time(j.created_at)}</td><td>${esc(JSON.stringify(j.result || {}))}</td></tr>`).join('') || `<tr><td colspan="6" class="sub">No operations yet.</td></tr>`;
+}
+
+async function loadApprovals() {
+    const r = await api('/api/approvals');
+    $('approval-list').innerHTML = r.map(a => `<div class="approval"><div><h4>${esc(a.action)} · ${esc((S.servers.find(s => s.id === a.server_id) || {}).name || a.server_id)}</h4><div class="meta">Requested ${time(a.created_at)} · job ${esc(a.job_id)}</div></div><button class="primary" onclick="approve(${a.id})">Approve</button></div>`).join('') || `<div class="sub">No pending approvals.</div>`;
+}
+
+async function loadAudit() {
+    const [r, v] = await Promise.all([api('/api/audit'), api('/api/audit/verify')]);
+    const statusEl = $('audit-status');
+    if (statusEl) {
+        if (v.status === 'verified') {
+            statusEl.textContent = `✓ Hash chain verified (${v.total_records} events signed)`;
+            statusEl.style.color = '#22c55e';
+        } else {
+            statusEl.textContent = `⚠ TAMPER DETECTED at event #${v.tampered_id}!`;
+            statusEl.style.color = '#ef4444';
+        }
+    }
+    $('audit-table').innerHTML = r.map(a => `<tr><td>${time(a.created_at)}</td><td>${esc(a.actor)}</td><td>${esc(a.action)}</td><td>${esc(a.target)}</td><td>${esc(a.result)}</td><td><code style="font-size:11px">${esc((a.entry_hash || '').slice(0, 12))}...</code></td></tr>`).join('') || `<tr><td colspan="6" class="sub">No audit events.</td></tr>`;
+}
+
+window.queue = (id, action) => {
+    S.pending = { id, action };
+    $('action-title').textContent = action.replaceAll('_', ' ');
+    $('action-copy').textContent = 'Review this operation before it is sent to the control plane.';
+    $('service-label').classList.toggle('hidden', !action.startsWith('service_'));
+    $('service').value = '';
+    $('action').classList.remove('hidden');
+};
+
+window.submitAction = async () => {
+    const p = S.pending;
+    if (!p) return;
+    const params = p.action.startsWith('service_') ? { service: $('service').value.trim() } : {};
+    try {
+        await api(`/api/servers/${p.id}/jobs`, { method: 'POST', body: { action: p.action, params } });
+        $('action').classList.add('hidden');
+        S.pending = null;
+        await loadOverview();
+        if (S.view === 'operations') await loadJobs();
+    } catch (e) {
+        alert(e.message);
+    }
+};
+
+window.approve = async id => {
+    try {
+        await api(`/api/approvals/${id}/approve`, { method: 'POST' });
+        await loadApprovals();
+        await loadOverview();
+    } catch (e) {
+        alert(e.message);
+    }
+};
+
+$('search').addEventListener('input', renderFleet);
+$('confirm-action').addEventListener('click', submitAction);
+document.querySelectorAll('[data-close="action"]').forEach(x => x.addEventListener('click', () => $('action').classList.add('hidden')));
+$('refresh').addEventListener('click', loadOverview);
+$('refresh-jobs').addEventListener('click', loadJobs);
+$('refresh-approvals').addEventListener('click', loadApprovals);
+$('refresh-audit').addEventListener('click', loadAudit);
+$('add').addEventListener('click', () => { $('enroll').classList.remove('hidden'); $('token-box').classList.add('hidden'); });
+document.querySelectorAll('[data-close="enroll"]').forEach(x => x.addEventListener('click', () => $('enroll').classList.add('hidden')));
+$('generate').addEventListener('click', async () => {
+    try {
+        const r = await api('/api/enrollment-tokens', { method: 'POST' });
+        $('token').textContent = r.token;
+        $('expiry').textContent = `Expires ${time(r.expires_at)}`;
+        $('token-box').classList.remove('hidden');
+    } catch (e) {
+        alert(e.message);
+    }
+});
+
+boot();

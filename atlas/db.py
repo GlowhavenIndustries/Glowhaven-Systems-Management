@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, server_id TEXT NOT NULL RE
 CREATE TABLE IF NOT EXISTS approvals (id INTEGER PRIMARY KEY AUTOINCREMENT, job_id TEXT NOT NULL UNIQUE REFERENCES jobs(id) ON DELETE CASCADE, requested_by INTEGER NOT NULL REFERENCES users(id), approved_by INTEGER REFERENCES users(id), status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL, decided_at TEXT);
 CREATE TABLE IF NOT EXISTS maintenance_windows (id TEXT PRIMARY KEY, name TEXT NOT NULL, starts_at TEXT NOT NULL, ends_at TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, created_by INTEGER NOT NULL REFERENCES users(id));
 CREATE TABLE IF NOT EXISTS policies (id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, definition TEXT NOT NULL DEFAULT '{}', enabled INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, result TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, result TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, prev_hash TEXT NOT NULL DEFAULT 'GENESIS', entry_hash TEXT NOT NULL DEFAULT '');
 CREATE INDEX IF NOT EXISTS idx_servers_last_seen ON servers(last_seen);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at);
@@ -27,6 +27,11 @@ class Database:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as conn:
             conn.executescript(SCHEMA)
+            cols = [r["name"] for r in conn.execute("PRAGMA table_info(audit_log)").fetchall()]
+            if "prev_hash" not in cols:
+                conn.execute("ALTER TABLE audit_log ADD COLUMN prev_hash TEXT NOT NULL DEFAULT 'GENESIS'")
+            if "entry_hash" not in cols:
+                conn.execute("ALTER TABLE audit_log ADD COLUMN entry_hash TEXT NOT NULL DEFAULT ''")
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:

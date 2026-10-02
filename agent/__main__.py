@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import shutil
 import socket
 import subprocess
@@ -14,6 +15,7 @@ from pathlib import Path
 
 import psutil
 
+SERVICE_RE = re.compile(r"^[A-Za-z0-9_.@:-]{1,128}$")
 STATE = Path(os.getenv("ATLAS_AGENT_STATE", "agent.json"))
 
 
@@ -63,6 +65,8 @@ def patch_assessment() -> dict:
 
 
 def service(action: str, name: str) -> dict:
+    if not isinstance(name, str) or not SERVICE_RE.fullmatch(name):
+        return {"returncode": 1, "stdout": "", "stderr": "Invalid service name"}
     if platform.system().lower()=="windows":
         cmd={"service_start":"start","service_stop":"stop"}[action] if action!="service_restart" else "restart"
         if cmd=="restart":

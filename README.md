@@ -73,20 +73,16 @@ The current release uses SQLite for an approachable single-node deployment. The 
 
 Atlas includes real controls including:
 
-- scrypt password hashing
-- HttpOnly and SameSite session cookies
-- CSRF protection
-- Server-side authorization
-- Expiring, single-use enrollment tokens
-- Hashed agent credentials
-- Explicit operation allowlists
-- Strict service-name validation
-- Security headers
-- Non-root container execution
-- Linux capability dropping
-- Read-only container filesystem
-- Structured audit events
-- Automated security regression tests
+- Cryptographic scrypt password hashing
+- Sliding-window rate limiting for authentication, enrollment, and registration
+- HttpOnly and SameSite session cookies with double-submit CSRF verification
+- Server-side role-based authorization (`admin`, `operator`, `viewer`)
+- Tamper-evident audit logging with SHA-256 hash chaining and automated integrity verification (`/api/audit/verify`)
+- Expiring, single-use enrollment tokens and hashed agent credentials
+- Explicit operation allowlists with strict parameter regex validation
+- Security headers (CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy)
+- Non-root container profile with dropped Linux capabilities and read-only filesystem
+- Comprehensive automated security regression test suite
 
 This project does not claim to be certified, invulnerable, or automatically production-ready for every environment. Organizations should layer TLS, identity-provider integration, protected backups, network segmentation, secrets management, centralized logging, and operating-system hardening appropriate to their deployment.
 

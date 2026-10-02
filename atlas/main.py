@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import secrets
@@ -16,7 +17,11 @@ from pydantic import BaseModel, Field, field_validator
 
 from .config import settings
 from .db import Database
-from .security import hash_secret, hash_token, random_token, utcnow, verify_secret
+from .security import RateLimiter, hash_secret, hash_token, random_token, utcnow, verify_secret
+
+login_limiter = RateLimiter(max_requests=5, window_seconds=60)
+enrollment_limiter = RateLimiter(max_requests=10, window_seconds=60)
+register_limiter = RateLimiter(max_requests=10, window_seconds=60)
 
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="Glowhaven Atlas", version="0.1.0", docs_url="/api/docs", redoc_url=None)
@@ -30,7 +35,13 @@ HIGH_IMPACT = {"shutdown", "reboot", "apply_security_patches"}
 
 
 def audit(actor: str, action: str, target: str, result: str = "success", detail: dict[str, Any] | None = None) -> None:
-    db.execute("INSERT INTO audit_log(actor,action,target,result,detail,created_at) VALUES(?,?,?,?,?,?)", (actor, action, target, result, json.dumps(detail or {}, separators=(",", ":")), utcnow().isoformat()))
+    now_str = utcnow().isoformat()
+    detail_str = json.dumps(detail or {}, separators=(",", ":"))
+    last = db.one("SELECT entry_hash FROM audit_log ORDER BY id DESC LIMIT 1")
+    prev_hash = (last["entry_hash"] if last and last["entry_hash"] else "GENESIS")
+    calc_payload = f"{prev_hash}:{actor}:{action}:{target}:{result}:{detail_str}:{now_str}"
+    entry_hash = hashlib.sha256(calc_payload.encode("utf-8")).hexdigest()
+    db.execute("INSERT INTO audit_log(actor,action,target,result,detail,created_at,prev_hash,entry_hash) VALUES(?,?,?,?,?,?,?,?)", (actor, action, target, result, detail_str, now_str, prev_hash, entry_hash))
 
 
 def bootstrap() -> None:
@@ -176,16 +187,24 @@ async def healthz():
     return {"status":"ok","service":"glowhaven-atlas"}
 
 @app.post("/api/auth/login")
-async def login(payload: Login, response: Response):
+async def login(payload: Login, request: Request, response: Response):
+    client_ip = request.client.host if request.client else "unknown"
+    rate_key = f"{client_ip}:{payload.username.strip()}"
+    if not login_limiter.is_allowed(rate_key):
+        audit("unauthenticated", "auth.login_failed", payload.username.strip(), result="rate_limited", detail={"ip": client_ip, "reason": "rate limit exceeded"})
+        raise HTTPException(429, "too many login attempts, please try again later")
+
     row = db.one("SELECT * FROM users WHERE username=?", (payload.username.strip(),))
     if not row or not verify_secret(payload.password, row["password_hash"]):
+        audit("unauthenticated", "auth.login_failed", payload.username.strip(), result="failed", detail={"ip": client_ip, "reason": "invalid credentials"})
         raise HTTPException(401, "invalid credentials")
+
     sid, ctoken = random_token(), random_token()
     expires = utcnow() + timedelta(hours=settings.session_hours)
     db.execute("INSERT INTO sessions(id,user_id,csrf,expires_at) VALUES(?,?,?,?)", (sid,row["id"],ctoken,expires.isoformat()))
     response.set_cookie(SESSION_COOKIE,sid,secure=settings.secure_cookies,httponly=True,samesite="strict",max_age=settings.session_hours*3600)
     response.set_cookie(CSRF_COOKIE,ctoken,secure=settings.secure_cookies,httponly=False,samesite="strict",max_age=3600)
-    audit(row["username"],"auth.login","session")
+    audit(row["username"],"auth.login","session",detail={"ip": client_ip})
     return {"username":row["username"],"role":row["role"]}
 
 @app.post("/api/auth/logout")
@@ -223,13 +242,35 @@ async def jobs(_: sqlite3.Row = Depends(session)):
 @app.get("/api/audit")
 async def audit_log(_: sqlite3.Row = Depends(role("admin"))):
     rows=db.all("SELECT * FROM audit_log ORDER BY id DESC LIMIT 300")
-    return [{"id":r["id"],"actor":r["actor"],"action":r["action"],"target":r["target"],"result":r["result"],"detail":db.obj(r["detail"]),"created_at":r["created_at"]} for r in rows]
+    return [{"id":r["id"],"actor":r["actor"],"action":r["action"],"target":r["target"],"result":r["result"],"detail":db.obj(r["detail"]),"created_at":r["created_at"],"prev_hash":r["prev_hash"],"entry_hash":r["entry_hash"]} for r in rows]
+
+@app.get("/api/audit/verify")
+async def verify_audit(_: sqlite3.Row = Depends(role("admin"))):
+    rows = db.all("SELECT * FROM audit_log ORDER BY id ASC")
+    if not rows:
+        return {"status": "verified", "total_records": 0, "tampered_id": None}
+    expected_prev = "GENESIS"
+    for r in rows:
+        p_hash = r["prev_hash"] if "prev_hash" in r.keys() else "GENESIS"
+        e_hash = r["entry_hash"] if "entry_hash" in r.keys() else ""
+        if p_hash != expected_prev:
+            return {"status": "tampered", "total_records": len(rows), "tampered_id": r["id"], "reason": f"prev_hash mismatch at id {r['id']}"}
+        detail_str = r["detail"]
+        calc_payload = f"{expected_prev}:{r['actor']}:{r['action']}:{r['target']}:{r['result']}:{detail_str}:{r['created_at']}"
+        calc_hash = hashlib.sha256(calc_payload.encode("utf-8")).hexdigest()
+        if e_hash != calc_hash:
+            return {"status": "tampered", "total_records": len(rows), "tampered_id": r["id"], "reason": f"entry_hash mismatch at id {r['id']}"}
+        expected_prev = calc_hash
+    return {"status": "verified", "total_records": len(rows), "tampered_id": None}
 
 @app.post("/api/enrollment-tokens")
-async def enrollment(s: sqlite3.Row = Depends(role("admin")), _: sqlite3.Row = Depends(csrf)):
+async def enrollment(request: Request, s: sqlite3.Row = Depends(role("admin")), _: sqlite3.Row = Depends(csrf)):
+    client_ip = request.client.host if request.client else "unknown"
+    if not enrollment_limiter.is_allowed(client_ip):
+        raise HTTPException(429, "rate limit exceeded")
     raw=random_token(); expires=utcnow()+timedelta(minutes=settings.enrollment_minutes)
     db.execute("INSERT INTO enrollment_tokens(token_hash,created_by,expires_at) VALUES(?,?,?)",(hash_token(raw),s["user_id"],expires.isoformat()))
-    audit(s["username"],"enrollment.create","fleet",detail={"expires_at":expires.isoformat()})
+    audit(s["username"],"enrollment.create","fleet",detail={"expires_at":expires.isoformat(),"ip":client_ip})
     return {"token":raw,"expires_at":expires.isoformat()}
 
 @app.post("/api/servers/{server_id}/jobs")
@@ -258,13 +299,18 @@ async def approve(approval_id: int, s: sqlite3.Row = Depends(role("admin")), _: 
     audit(s["username"],"approval.approve",row["job_id"]); return {"ok":True}
 
 @app.post("/api/agent/register")
-async def register(payload: Register):
+async def register(payload: Register, request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    if not register_limiter.is_allowed(client_ip):
+        raise HTTPException(429, "rate limit exceeded")
     row=db.one("SELECT * FROM enrollment_tokens WHERE token_hash=?",(hash_token(payload.enrollment_token),))
-    if not row or row["used_at"] or row["expires_at"]<=utcnow().isoformat(): raise HTTPException(401,"invalid or expired enrollment token")
+    if not row or row["used_at"] or row["expires_at"]<=utcnow().isoformat():
+        audit("unauthenticated","agent.register_failed",payload.hostname,result="failed",detail={"ip":client_ip,"reason":"invalid or expired token"})
+        raise HTTPException(401,"invalid or expired enrollment token")
     sid,key=str(uuid.uuid4()),random_token(); now=utcnow().isoformat()
     db.execute("UPDATE enrollment_tokens SET used_at=? WHERE token_hash=?",(now,row["token_hash"]))
     db.execute("INSERT INTO servers(id,name,hostname,platform,arch,os_version,status,last_seen,agent_key_hash,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",(sid,payload.name,payload.hostname,payload.platform,payload.arch,payload.os_version,"online",now,hash_token(key),now))
-    audit("agent","server.register",sid,detail={"hostname":payload.hostname,"platform":payload.platform})
+    audit("agent","server.register",sid,detail={"hostname":payload.hostname,"platform":payload.platform,"ip":client_ip})
     return {"server_id":sid,"agent_key":key,"heartbeat_seconds":15}
 
 @app.post("/api/agent/heartbeat")
