@@ -2,256 +2,280 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#05070a">
-  <title>Glowhaven Atlas Control Plane</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#06080b">
+  <title>Atlas Control Plane</title>
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
 
+<!-- LOGIN VIEW -->
 <div id="login" class="login">
   <div class="login-card">
-    <div class="mark">A</div>
-    <div class="eyebrow">ENTERPRISE CONTROL PLANE</div>
-    <h1>Glowhaven Atlas</h1>
-    <p>Discover, configure, patch, secure, and operate server infrastructure.</p>
+    <div class="login-header">
+      <div class="login-brand">
+        <div class="mark">A</div>
+        <div>
+          <div class="eyebrow">GLOWHAVEN SYSTEM CONTROL</div>
+          <span style="font-size:11px; font-weight:600; color:var(--text-muted)">ENTERPRISE INFRASTRUCTURE</span>
+        </div>
+      </div>
+      <h1>Atlas Platform</h1>
+      <p>Secure server lifecycle operations, change approvals, and fleet management.</p>
+    </div>
+
     <form id="login-form">
-      <label>Username<input id="username" required autocomplete="username" value="admin"></label>
-      <label>Password<input id="password" type="password" required autocomplete="current-password"></label>
-      <button class="primary wide">Sign in to Control Plane</button>
-      <div id="login-error" class="error"></div>
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input id="username" type="text" required autocomplete="username" placeholder="admin">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input id="password" type="password" required autocomplete="current-password" placeholder="••••••••••••">
+      </div>
+      <button type="submit" class="primary wide" style="margin-top:8px">Sign in to Console</button>
+      <div id="login-error" class="error-text"></div>
     </form>
   </div>
 </div>
 
+<!-- MAIN DASHBOARD SHELL -->
 <div id="app" class="hidden app">
-  <aside>
-    <div class="brand">
-      <div class="mark small">A</div>
-      <div>
-        <strong>Glowhaven Atlas</strong>
-        <span>Systems Management</span>
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-wrapper">
+        <div class="mark small">A</div>
+        <div class="brand-text">
+          <strong>Atlas Platform</strong>
+          <span>Glowhaven Control</span>
+        </div>
       </div>
     </div>
-    <nav>
-      <button class="nav active" data-view="overview">Command Center <kbd>01</kbd></button>
-      <button class="nav" data-view="fleet">Server Fleet <kbd>02</kbd></button>
-      <button class="nav" data-view="patches">Patch Center <kbd>03</kbd></button>
-      <button class="nav" data-view="policies">Desired State <kbd>04</kbd></button>
-      <button class="nav" data-view="compliance">Compliance <kbd>05</kbd></button>
-      <button class="nav" data-view="hardware">BMC & Hardware <kbd>06</kbd></button>
-      <button class="nav" data-view="provisioning">Provisioning <kbd>07</kbd></button>
-      <button class="nav" data-view="rollouts">Rollout Rings <kbd>08</kbd></button>
-      <button class="nav" data-view="approvals">Approvals <kbd>09</kbd></button>
-      <button class="nav" data-view="maintenance">Maintenance <kbd>10</kbd></button>
-      <button class="nav" data-view="audit">Audit Log <kbd>11</kbd></button>
+
+    <nav class="sidebar-nav">
+      <div>
+        <div class="nav-group-title">Command Center</div>
+        <div class="nav-section">
+          <button class="nav-btn active" data-view="overview">
+            <span class="nav-btn-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              Overview
+            </span>
+            <kbd>01</kbd>
+          </button>
+          <button class="nav-btn" data-view="fleet">
+            <span class="nav-btn-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+              Fleet Inventory
+            </span>
+            <kbd>02</kbd>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="nav-group-title">Governance</div>
+        <div class="nav-section">
+          <button class="nav-btn" data-view="operations">
+            <span class="nav-btn-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Operations
+            </span>
+            <kbd>03</kbd>
+          </button>
+          <button class="nav-btn" data-view="approvals">
+            <span class="nav-btn-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 11 11 13 15 9"/></svg>
+              Approvals
+            </span>
+            <kbd>04</kbd>
+          </button>
+          <button class="nav-btn" data-view="audit">
+            <span class="nav-btn-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              Audit Trail
+            </span>
+            <kbd>05</kbd>
+          </button>
+        </div>
+      </div>
     </nav>
-    <div class="side-footer">
-      <span class="live"><i></i>Control Plane Active</span>
-      <button id="logout" class="ghost">Sign out</button>
+
+    <div class="sidebar-footer">
+      <div class="status-indicator">
+        <span class="status-dot"></span>
+        <span>Control Plane Healthy</span>
+      </div>
+      <div class="user-profile">
+        <div class="user-info">
+          <span class="user-name" id="user-display">Operator</span>
+          <span class="user-role" id="role-display">ADMIN</span>
+        </div>
+        <button id="logout" class="icon-btn" title="Sign out">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
     </div>
   </aside>
 
-  <main>
-    <header>
-      <div>
-        <div class="eyebrow" id="kicker">CONTROL PLANE</div>
-        <h2 id="title">Command Center</h2>
+  <!-- MAIN WORKSPACE CONTENT -->
+  <main class="main-content">
+    <header class="top-header">
+      <div class="header-left">
+        <button id="mobile-toggle" class="icon-btn mobile-menu-toggle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="header-title-group">
+          <div class="eyebrow" id="kicker">CONTROL PLANE</div>
+          <h2 id="title">Fleet Overview</h2>
+        </div>
       </div>
-      <div class="head-actions">
-        <span id="identity"></span>
-        <button id="add" class="primary admin">Add Server</button>
+
+      <div class="header-right">
+        <span class="badge badge-neutral" id="system-status-badge">PRODUCTION</span>
+        <button id="add" class="primary admin">Add Managed Server</button>
       </div>
     </header>
 
-    <!-- Command Center Overview -->
+    <!-- VIEW 1: OVERVIEW -->
     <section id="overview" class="view">
-      <div class="metrics">
-        <div><span>Managed Systems</span><b id="servers">0</b><small>Total enrolled hosts</small></div>
-        <div><span>Online Systems</span><b id="online">0</b><small>Active agent heartbeats</small></div>
-        <div><span>Warnings / Attention</span><b id="warning">0</b><small>Resource or posture alert</small></div>
-        <div><span>Pending Approvals</span><b id="pending">0</b><small id="window">Maintenance Window check</small></div>
+      <div class="metrics-grid">
+        <div class="metric-card accent-cyan">
+          <div class="metric-label">Managed Servers</div>
+          <div class="metric-value" id="servers">0</div>
+          <div class="metric-subtext">Registered infrastructure</div>
+        </div>
+        <div class="metric-card accent-green">
+          <div class="metric-label">Online Fleet</div>
+          <div class="metric-value" id="online">0</div>
+          <div class="metric-subtext">Active heartbeats (&lt;90s)</div>
+        </div>
+        <div class="metric-card accent-amber">
+          <div class="metric-label">Warnings</div>
+          <div class="metric-value" id="warning">0</div>
+          <div class="metric-subtext">High load or posture risks</div>
+        </div>
+        <div class="metric-card accent-violet">
+          <div class="metric-label">Pending Approvals</div>
+          <div class="metric-value" id="pending">0</div>
+          <div class="metric-subtext" id="window">Maintenance Window: Inactive</div>
+        </div>
       </div>
-      <div class="section">
-        <div><div class="eyebrow">FLEET HEALTH</div><h3>Infrastructure Status</h3></div>
-        <button class="ghost" id="refresh">Refresh Status</button>
+
+      <div class="section-bar">
+        <div class="section-title-group">
+          <div class="eyebrow">FLEET TELEMETRY</div>
+          <h3>System Status Overview</h3>
+        </div>
+        <div class="section-controls">
+          <button class="ghost" id="refresh">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            Refresh
+          </button>
+        </div>
       </div>
-      <div class="table">
-        <table>
-          <thead><tr><th>Server</th><th>Platform</th><th>Health</th><th>CPU</th><th>Memory</th><th>Disk</th><th>Last Seen</th><th>Actions</th></tr></thead>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Server Identifier</th>
+              <th>Platform & Arch</th>
+              <th>State</th>
+              <th>CPU Load</th>
+              <th>Memory Usage</th>
+              <th>Disk Usage</th>
+              <th>Last Heartbeat</th>
+            </tr>
+          </thead>
           <tbody id="fleet-table"></tbody>
         </table>
       </div>
     </section>
 
-    <!-- Server Fleet Cards -->
+    <!-- VIEW 2: FLEET -->
     <section id="fleet" class="view hidden">
-      <div class="section">
-        <div><div class="eyebrow">SERVER INVENTORY</div><h3>Managed Systems</h3></div>
-        <input id="search" class="search" placeholder="Search servers by name, platform, host">
-      </div>
-      <div id="cards" class="cards"></div>
-    </section>
-
-    <!-- Server Detail Workspace -->
-    <section id="server-detail" class="view hidden">
-      <div class="section">
-        <div>
-          <div class="eyebrow" id="sd-hostname">SERVER WORKSPACE</div>
-          <h3 id="sd-title">Server Detail</h3>
+      <div class="section-bar">
+        <div class="section-title-group">
+          <div class="eyebrow">SERVER INVENTORY</div>
+          <h3>Managed Server Fleet</h3>
         </div>
-        <button class="ghost" onclick="switchView('fleet')">Back to Fleet</button>
+        <div class="section-controls">
+          <input id="search" type="search" placeholder="Filter by name, host, or OS...">
+        </div>
       </div>
-      <div class="tab-bar">
-        <button class="tab-btn active" data-sdtab="sd-summary">Summary</button>
-        <button class="tab-btn" data-sdtab="sd-packages">Packages</button>
-        <button class="tab-btn" data-sdtab="sd-vulnerabilities">Vulnerabilities</button>
-        <button class="tab-btn" data-sdtab="sd-drift">Drift & Policies</button>
-        <button class="tab-btn" data-sdtab="sd-jobs">Job History</button>
-      </div>
-      <div id="sd-tab-content">
-        <div id="sd-summary" class="sd-tab"></div>
-        <div id="sd-packages" class="sd-tab hidden"></div>
-        <div id="sd-vulnerabilities" class="sd-tab hidden"></div>
-        <div id="sd-drift" class="sd-tab hidden"></div>
-        <div id="sd-jobs" class="sd-tab hidden"></div>
-      </div>
+
+      <div id="cards" class="cards-grid"></div>
     </section>
 
-    <!-- Patch Center -->
-    <section id="patches" class="view hidden">
-      <div class="section">
-        <div><div class="eyebrow">VULNERABILITY & PATCH CENTER</div><h3>Fleet Patch Assessment</h3></div>
-        <button class="ghost" id="refresh-patches">Refresh</button>
+    <!-- VIEW 3: OPERATIONS -->
+    <section id="operations" class="view hidden">
+      <div class="section-bar">
+        <div class="section-title-group">
+          <div class="eyebrow">OPERATIONAL HISTORY</div>
+          <h3>Queued & Executed Jobs</h3>
+        </div>
+        <div class="section-controls">
+          <button class="ghost" id="refresh-jobs">Refresh</button>
+        </div>
       </div>
-      <div class="table">
-        <table>
-          <thead><tr><th>CVE ID</th><th>Title</th><th>Severity</th><th>CVSS</th><th>Affected Packages</th><th>Published</th></tr></thead>
-          <tbody id="cve-table"></tbody>
-        </table>
-      </div>
-    </section>
 
-    <!-- Desired State Policies -->
-    <section id="policies" class="view hidden">
-      <div class="section">
-        <div><div class="eyebrow">CONFIGURATION MANAGEMENT</div><h3>Desired State Policies</h3></div>
-        <button class="primary" id="btn-create-policy">Create Policy</button>
-      </div>
-      <div class="table">
-        <table>
-          <thead><tr><th>Policy Name</th><th>Kind</th><th>Scope</th><th>Remediation</th><th>Version</th><th>Created At</th></tr></thead>
-          <tbody id="policies-table"></tbody>
-        </table>
-      </div>
-      <div class="section">
-        <div><div class="eyebrow">CONTINUOUS DRIFT DETECTION</div><h3>Fleet Drift Log</h3></div>
-      </div>
-      <div class="table">
-        <table>
-          <thead><tr><th>Server</th><th>Policy</th><th>Resource</th><th>Status</th><th>Difference</th><th>Last Evaluated</th></tr></thead>
-          <tbody id="drift-table"></tbody>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Target Server</th>
+              <th>Status</th>
+              <th>Approval Gate</th>
+              <th>Created At</th>
+              <th>Execution Output</th>
+            </tr>
+          </thead>
+          <tbody id="jobs"></tbody>
         </table>
       </div>
     </section>
 
-    <!-- Compliance Engine -->
-    <section id="compliance" class="view hidden">
-      <div class="section">
-        <div><div class="eyebrow">COMPLIANCE & AUDITING</div><h3>Baselines & SCAP Reports</h3></div>
-        <button class="primary" id="btn-create-baseline">Create Baseline</button>
-      </div>
-      <div class="table">
-        <table>
-          <thead><tr><th>Baseline Name</th><th>Framework</th><th>Description</th><th>Created At</th></tr></thead>
-          <tbody id="baselines-table"></tbody>
-        </table>
-      </div>
-      <div class="section">
-        <div><div class="eyebrow">EVIDENCE REPORTS</div><h3>Evaluation Results</h3></div>
-      </div>
-      <div class="table">
-        <table>
-          <thead><tr><th>Server</th><th>Baseline</th><th>Score</th><th>Status</th><th>Evaluated At</th></tr></thead>
-          <tbody id="compliance-reports-table"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- BMC & Hardware -->
-    <section id="hardware" class="view hidden">
-      <div class="section">
-        <div><div class="eyebrow">HARDWARE & BMC MANAGEMENT</div><h3>Redfish / IPMI Nodes</h3></div>
-        <button class="primary" id="btn-add-bmc">Register BMC Node</button>
-      </div>
-      <div class="table">
-        <table>
-          <thead><tr><th>Node Name</th><th>Address</th><th>Type</th><th>Username</th><th>Power State</th><th>Health</th><th>Actions</th></tr></thead>
-          <tbody id="bmc-table"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Provisioning -->
-    <section id="provisioning" class="view hidden">
-      <div class="section">
-        <div><div class="eyebrow">BARE-METAL PROVISIONING</div><h3>OS Installation Profiles</h3></div>
-        <button class="primary" id="btn-create-profile">Create Profile</button>
-      </div>
-      <div class="table">
-        <table>
-          <thead><tr><th>Profile Name</th><th>OS Family</th><th>Image URL</th><th>Created At</th></tr></thead>
-          <tbody id="profiles-table"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Rollout Rings -->
-    <section id="rollouts" class="view hidden">
-      <div class="section">
-        <div><div class="eyebrow">STAGED DEPLOYMENTS</div><h3>Rollout Canary Rings</h3></div>
-        <button class="primary" id="btn-create-ring">Create Ring</button>
-      </div>
-      <div class="table">
-        <table>
-          <thead><tr><th>Ring Name</th><th>Order</th><th>Target Group</th><th>Max Concurrency</th><th>Failure Threshold</th><th>Actions</th></tr></thead>
-          <tbody id="rings-table"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Approvals -->
+    <!-- VIEW 4: APPROVALS -->
     <section id="approvals" class="view hidden">
-      <div class="section">
-        <div><div class="eyebrow">CHANGE CONTROL</div><h3>Pending Approvals Queue</h3></div>
-        <button class="ghost" id="refresh-approvals">Refresh</button>
+      <div class="section-bar">
+        <div class="section-title-group">
+          <div class="eyebrow">CHANGE GOVERNANCE</div>
+          <h3>Pending Controlled Operations</h3>
+        </div>
+        <div class="section-controls">
+          <button class="ghost" id="refresh-approvals">Refresh</button>
+        </div>
       </div>
+
       <div id="approval-list" class="approval-list"></div>
     </section>
 
-    <!-- Maintenance Windows -->
-    <section id="maintenance" class="view hidden">
-      <div class="section">
-        <div><div class="eyebrow">CHANGE WINDOWS</div><h3>Maintenance Windows</h3></div>
-        <button class="primary" id="btn-add-mw">Create Maintenance Window</button>
-      </div>
-      <div class="table">
-        <table>
-          <thead><tr><th>Window Name</th><th>Start Time</th><th>End Time</th><th>Type</th><th>Blackout</th><th>Actions</th></tr></thead>
-          <tbody id="mw-table"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Audit Log -->
+    <!-- VIEW 5: AUDIT TRAIL -->
     <section id="audit" class="view hidden">
-      <div class="section">
-        <div><div class="eyebrow">ACCOUNTABILITY</div><h3>Audit Trail Log</h3></div>
-        <button class="ghost" id="refresh-audit">Refresh</button>
+      <div class="section-bar">
+        <div class="section-title-group">
+          <div class="eyebrow">SECURITY LOG</div>
+          <h3>Audit & Compliance Trail</h3>
+        </div>
+        <div class="section-controls">
+          <button class="ghost" id="refresh-audit">Refresh</button>
+        </div>
       </div>
-      <div class="table">
-        <table>
-          <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Result</th></tr></thead>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Actor</th>
+              <th>Action</th>
+              <th>Target Resource</th>
+              <th>Result</th>
+            </tr>
+          </thead>
           <tbody id="audit-table"></tbody>
         </table>
       </div>
@@ -259,44 +283,78 @@
   </main>
 </div>
 
-<!-- Action Modal -->
+<!-- MODAL 1: QUEUE OPERATION -->
 <div id="action" class="modal hidden">
-  <div class="backdrop"></div>
+  <div class="backdrop" data-close="action"></div>
   <div class="modal-card">
     <div class="modal-head">
       <div>
         <div class="eyebrow">CONTROLLED OPERATION</div>
         <h3 id="action-title">Queue Operation</h3>
       </div>
-      <button data-close="action" class="icon">×</button>
+      <button data-close="action" class="icon-btn">✕</button>
     </div>
-    <p id="action-copy">Review operation details before queuing for dispatch.</p>
-    <label id="service-label" class="hidden">Service Name<input id="service" maxlength="128" placeholder="nginx"></label>
-    <label id="package-label" class="hidden">Package Name<input id="package" maxlength="128" placeholder="curl"></label>
-    <button id="confirm-action" class="primary wide">Queue Operation</button>
+    <p id="action-copy">Confirm execution parameters for target host.</p>
+
+    <div id="service-label" class="form-group hidden">
+      <label for="service">Service Name</label>
+      <input id="service" type="text" maxlength="128" placeholder="e.g. nginx, systemd-journald">
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+      <button data-close="action" class="ghost">Cancel</button>
+      <button id="confirm-action" class="primary">Queue Operation</button>
+    </div>
   </div>
 </div>
 
-<!-- Enrollment Modal -->
+<!-- MODAL 2: ENROLL SERVER -->
 <div id="enroll" class="modal hidden">
-  <div class="backdrop"></div>
+  <div class="backdrop" data-close="enroll"></div>
   <div class="modal-card">
     <div class="modal-head">
       <div>
-        <div class="eyebrow">ENROLLMENT</div>
-        <h3>Enroll Managed Server</h3>
+        <div class="eyebrow">FLEET ENROLLMENT</div>
+        <h3>Add Managed Server</h3>
       </div>
-      <button data-close="enroll" class="icon">×</button>
+      <button data-close="enroll" class="icon-btn">✕</button>
     </div>
-    <p>Generate a single-use token and run the Atlas agent on target host.</p>
-    <button id="generate" class="primary wide">Generate Token</button>
-    <div id="token-box" class="token hidden">
-      <span>Enrollment Token</span>
+    <p>Generate a single-use credential token to enroll a new server host into Atlas.</p>
+
+    <button id="generate" class="secondary wide">Generate Single-Use Enrollment Token</button>
+
+    <div id="token-box" class="token-box hidden">
+      <span class="eyebrow">Enrollment Credential Token</span>
       <code id="token"></code>
-      <small id="expiry"></small>
+      <small id="expiry" class="cell-sub"></small>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+      <button data-close="enroll" class="ghost">Close</button>
     </div>
   </div>
 </div>
+
+<!-- MODAL 3: INSPECT RESULT / JSON -->
+<div id="inspect-modal" class="modal hidden">
+  <div class="backdrop" data-close="inspect-modal"></div>
+  <div class="modal-card" style="max-width: 600px;">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">JOB OUTPUT</div>
+        <h3 id="inspect-title">Execution Result Details</h3>
+      </div>
+      <button data-close="inspect-modal" class="icon-btn">✕</button>
+    </div>
+    <pre id="inspect-code" class="code-block"></pre>
+    <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+      <button data-close="inspect-modal" class="ghost">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container" class="toast-container"></div>
 
 <script src="/static/app.js" defer></script>
 </body>
