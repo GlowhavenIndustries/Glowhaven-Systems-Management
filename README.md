@@ -1,5 +1,7 @@
 # Glowhaven Atlas
 
+[English](README.md) | [简体中文](README_zh-CN.md)
+
 > **The server lifecycle platform for infrastructure teams that need one operational control plane.**
 
 Atlas is an open-source, self-hosted platform for managing Linux and Windows server fleets across discovery, telemetry, maintenance, controlled operations, change approval, and auditability.
@@ -35,7 +37,7 @@ Atlas takes a different approach: **bring the recurring Day 1 and Day 2 server l
                                   |
                                   v
                         +----------------------+
-                        |  ATLAS CONTROL    |
+                        |  ATLAS CONTROL       |
                         |----------------------|
                         | Identity             |
                         | Authorization        |
@@ -51,7 +53,7 @@ Atlas takes a different approach: **bring the recurring Day 1 and Day 2 server l
                     |              |              |
                     v              v              v
                Server A       Server B       Server C
-               Atlas       Atlas       Atlas
+               Atlas          Atlas          Atlas
                Agent          Agent          Agent
 ```
 
@@ -90,7 +92,7 @@ Atlas includes real controls including:
 
 This project does not claim to be certified, invulnerable, or automatically production-ready for every environment. Organizations should layer TLS, identity-provider integration, protected backups, network segmentation, secrets management, centralized logging, and operating-system hardening appropriate to their deployment.
 
-Security vulnerabilities should be submitted privately through GitHub's **Security → Report a vulnerability** workflow rather than public issues. See [SECURITY.md](SECURITY.md).
+Security vulnerabilities should be submitted privately through GitHub's **Security -> Report a vulnerability** workflow rather than public issues. See [SECURITY.md](SECURITY.md).
 
 ## Quick start
 
@@ -100,7 +102,7 @@ cd Glowhaven-Systems-Management
 python -m venv .venv
 
 # Windows PowerShell
-.venv\\Scripts\\Activate.ps1
+.venv\Scripts\Activate.ps1
 $env:ATLAS_BOOTSTRAP_PASSWORD = "replace-with-a-long-random-password"
 
 # Linux / macOS
@@ -123,6 +125,93 @@ docker compose up --build
 ```
 
 For production deployment, terminate TLS in front of Atlas, enable secure cookies, persist the database on protected storage, and restrict network access to the management plane.
+
+## Enterprise Linux Deployment (RHEL / Rocky Linux / AlmaLinux / Fedora)
+
+### Controller Setup on Enterprise Linux
+
+1. Install Python 3, pip, and required system dependencies:
+```bash
+sudo dnf install -y python3 python3-pip python3-virtualenv git
+```
+
+2. Clone repository and setup environment:
+```bash
+git clone https://github.com/GlowhavenIndustries/Glowhaven-Systems-Management.git
+cd Glowhaven-Systems-Management
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+3. Configure systemd service for Atlas Controller (`/etc/systemd/system/atlas-controller.service`):
+```ini
+[Unit]
+Description=Glowhaven Atlas Controller
+After=network.target
+
+[Service]
+Type=simple
+User=atlas
+Group=atlas
+WorkingDirectory=/opt/glowhaven-atlas
+Environment="ATLAS_BOOTSTRAP_PASSWORD=replace-with-a-long-random-password"
+ExecStart=/opt/glowhaven-atlas/.venv/bin/uvicorn atlas.main:app --host 127.0.0.1 --port 8800
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+4. Enable and start the controller service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now atlas-controller
+```
+
+### Agent Setup as a Systemd Service on Enterprise Linux
+
+To run the agent continuously as a background systemd service on managed Enterprise Linux hosts (RHEL / Rocky Linux / AlmaLinux / Fedora):
+
+1. Install Python 3 and dependencies:
+```bash
+sudo dnf install -y python3 python3-pip
+```
+
+2. Create an agent directory and install requirements:
+```bash
+sudo mkdir -p /opt/glowhaven-agent
+sudo chown -R root:root /opt/glowhaven-agent
+cd /opt/glowhaven-agent
+python3 -m venv .venv
+source .venv/bin/activate
+pip install requests
+```
+
+3. Create the agent systemd service unit (`/etc/systemd/system/atlas-agent.service`):
+```ini
+[Unit]
+Description=Glowhaven Atlas Agent
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/glowhaven-agent
+ExecStart=/opt/glowhaven-agent/.venv/bin/python3 -m agent --controller https://atlas.example.internal --enrollment-token <TOKEN> --name prod-web-01
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+4. Enable and start the agent service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now atlas-agent
+```
 
 ## Enroll a server
 
